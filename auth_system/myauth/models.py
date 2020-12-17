@@ -6,7 +6,7 @@ class Account(models.Model):
     user_pw = models.CharField(max_length=300)
     user_email = models.CharField(max_length=300)
     salt = models.CharField(max_length=40)
-    is_active = models.IntegerField(max_length=2)
+    is_active = models.IntegerField(default=0)
 
     class Meta:
         db_table = 'Account'
