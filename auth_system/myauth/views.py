@@ -1,9 +1,14 @@
+import jwt
+from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import render
 from django.views import generic
+from datetime import datetime
 
 # Create your views here.
+from django.views.decorators.csrf import csrf_exempt, requires_csrf_token
 from rest_framework import permissions, status
+from rest_framework.decorators import api_view
 from rest_framework.parsers import JSONParser
 from rest_framework.renderers import JSONRenderer, TemplateHTMLRenderer
 from django.http import JsonResponse
@@ -20,7 +25,7 @@ class UserLoginView(APIView):
     renderer_classes = (JSONRenderer, TemplateHTMLRenderer,)
 
     def post(self, request, *args, **kargs):
-        user_id = request.POST['user_id'].lower()
+        user_id = request.POST.get('user_id').lower()
         try:
             user_obj = Account.objects.get(user_id=user_id)
         except Account.DoesNotExist:
@@ -30,19 +35,22 @@ class UserLoginView(APIView):
             content = {'message':'해당 아이디가 존재하지 않습니다.'}
             return Response(content, template_name='myauth/login_fail.html')
 
-        # db에 해당 아이디가 존재할 경우, 비밀번호가 일치하는지 확인, 실패할 경
-        if bcrypt.checkpw(request.POST['user_pw'].encode('utf-8'), user_obj.user_pw.encode('utf-8')) is False:
+        # db에 해당 아이디가 존재할 경우, 비밀번호가 일치하는지 확인, 실패할 경우
+        if bcrypt.checkpw(request.POST.get('user_pw').encode('utf-8'), user_obj.user_pw.encode('utf-8')) is False:
             content = {'message':'비밀번호가 일치하지 않습니다.'}
             return Response(content, template_name='myauth/login_fail.html')
 
+
         # 비밀번호가 일치한 경우, token을 생성하여 user에게 전달
         # jwt 사용하기
+        jwt_token = jwt_create(user_id)
+        response = Response({
+            'response': 'success',
+            'message': '로그인에 성공하셨습니다!',
+        }, template_name='myauth/login_success.html')
+        response.set_cookie('jwttoken', jwt_token)
+        return response
 
-        content = {'user_id': 'user'}
-        return JsonResponse({
-            'response': 'error',
-            'message': 'No data found'
-        })
 
 
     def get(self, request, *args, **kwargs):
@@ -57,7 +65,7 @@ class SignUpView(APIView):
 
     def post(self, request, *args, **kwargs):
         #id를 소문자로 통일
-        user_id = request.POST['user_id'].lower()
+        user_id = request.POST.get('user_id').lower()
         try:
             user_obj = Account.objects.get(user_id=user_id)
         except Account.DoesNotExist:
@@ -71,8 +79,8 @@ class SignUpView(APIView):
         '''여기부터 동일 id가 없을때 새로 계정 생성해주는 코드 작성'''
         salt = bcrypt.gensalt()
         # db에는 salt+user_pw의 해시값이 저장되어야 함(password encryption)
-        user_pw = bcrypt.hashpw(request.POST['user_pw'].encode('utf-8'), salt)
-        user_email = request.POST['user_email']
+        user_pw = bcrypt.hashpw(request.POST.get('user_pw').encode('utf-8'), salt)
+        user_email = request.POST.get('user_email')
         is_active = '0'
 
         user_obj = Account(
@@ -92,6 +100,30 @@ class SignUpView(APIView):
 
 
 
+
+def jwt_create(user_id):
+    date = datetime.now()
+    key = settings.SECRET_KEY
+    cur_time = str(date.year)+str(date.month)+str(date.day)\
+               +str(date.hour)+str(date.minute)+str(date.second)
+    payload = {
+        "user_id": user_id,
+        "current_time": cur_time,
+    }
+    jwt_token = jwt.encode(payload, key, algorithm='HS256').decode('utf-8')
+    return jwt_token
+
+
+
+
+@api_view(['GET', ])
+def home(request):
+    return Response(template_name='myauth/home.html')
+
+
+
 '''
-password를 확인할 때에는 str값으로 받아 매칭하므로 비밀번호를 데이터베이스에 저장할  decoding을 해줘야 한다.
+1. password를 확인할 때에는 str값으로 받아 매칭하므로 비밀번호를 데이터베이스에 저장할  decoding을 해줘야 한다.
+2. postman으로 확인할 떄, request.Post['__'] 이런 식으로 쓰면 안됨. get 사용하기!
 '''
+

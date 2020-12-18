@@ -8,6 +8,7 @@
     <h1>회원가입</h1>
     <div>
         <form method="post" action="#">
+            {% csrf_token %}
             <label for="input_email">E-mail</label>
             <input type="text" name="user_email" id="input_email"><br>
             <label for="input_user_id">ID</label>
