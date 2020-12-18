@@ -6,7 +6,6 @@ from django.views import generic
 from datetime import datetime
 
 # Create your views here.
-from django.views.decorators.csrf import csrf_exempt, requires_csrf_token
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view
 from rest_framework.parsers import JSONParser
