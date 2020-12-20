@@ -7,3 +7,4 @@ EMAIL = {
 'EMAIL_HOST_PASSWORD' : 'dnfl0917',
 'REDIRECT_PAGE' : 'http://127.0.0.1:8000/'
 }
+
