@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+    <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+    <!------ Include the above in your HEAD tag ---------->
+
+    <!-- All the files that are required -->
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+    <link href='https://fonts.googleapis.com/css?family=Varela+Round' rel='stylesheet' type='text/css'>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.13.1/jquery.validate.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="{% static 'myauth/style.css' %}" />
+    <title>find password</title>
+</head>
+<body>
+    <div class="text-center" style="padding:50px 0">
+        <div class="logo">change password</div>
+        <!-- Main Form -->
+        <div class="login-form-1">
+            <form id="forgot-password-form" class="text-left" method="post" action="#">
+                {% csrf_token %}
+                <div class="etc-login-form">
+                    <p>When you fill in your registered email address, you will be sent instructions on how to reset your password.</p>
+                </div>
+                <div class="login-form-main-message"></div>
+                <div class="main-login-form">
+                    <div class="login-group">
+                        <div class="form-group">
+                            <label for="password" class="sr-only">Password</label>
+                            <input class="form-control" type="password" id="password" name="password" placeholder="password">
+                        </div>
+                        <div class="form-group">
+                            <label for="check_password" class="sr-only">Password</label>
+                            <input type="password" class="form-control" id="check_password" name="check_password" placeholder="password">
+                        </div>
+                    </div>
+                    <button type="submit" class="login-button"><i class="fa fa-chevron-right"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        const uuid = "{{uuid}}";
+
+        {% if messages %}
+            {% for message in messages %}
+                alert("{{message}}")
+            {% endfor %}
+        {%endif %}
+
+        window.onload = () => {
+            const inputPassword = document.getElementById("password")
+            const inputCheckPassword = document.getElementById("check_password")
+            const changePasswordForm = document.getElementById("login_form");
+            const inputcsrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
+
+            changePasswordSubmit();
+
+            function changePasswordSubmit() {
+                changePasswordForm.addEventListener('submit', () => {
+
+                    fetch('http://127.0.0.1:8000/change/' + uuid, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRFToken': inputcsrfToken.value
+                        },
+                        body: JSON.stringify({
+                            password: inputPassword.value,
+                            check_password: inputCheckPassword.value
+                        })
+                    }).then(result => {
+                        console.log(result)
+                        return result.json()
+                    }).then(data => {
+                        console.log(data)
+                        if (data.response == "success") {
+                            alert(data.message);
+                            location.href = "http://127.0.0.1:8000/"
+                        } else {
+                            console.log(data.message);
+                            alert(data.message);
+                        }
+                    }).catch(e => {
+                        console.log(e);
+                    });
+                    event.preventDefault();
+                })
+            };
+        }
+    </script>
+</body>
+
+</html>

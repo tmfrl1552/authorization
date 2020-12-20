@@ -107,7 +107,7 @@ class SignUpView(APIView):
         token = jwt.encode({'user': user_obj.user_id}, settings.SECRET_KEY, algorithm='HS256').decode('utf-8')
         message_data = text.message(domain, uidb64, token)
 
-        mail_title = "이메일 인증을 완료해주세요"
+        mail_title = "회원가입 이메일 인증을 완료해주세요"
         mail_to = user_obj.user_email
         email = EmailMessage(mail_title, message_data, to=[mail_to])
         email.send()
@@ -118,6 +118,80 @@ class SignUpView(APIView):
 
     def get(self, request, *args, **kwargs):
         return Response(template_name='myauth/sign_up.html')
+
+
+
+
+# 비밀번호 찾기
+class FindPasswordView(APIView):
+    permission_classes = [permissions.AllowAny]
+    renderer_classes = (JSONRenderer, TemplateHTMLRenderer,)
+
+    def post(self, request, *args, **kwargs):
+        user_id = request.POST.get('user_id').lower()
+        user_email = request.POST.get('user_email')
+        try:
+            user_obj = Account.objects.get(user_id=user_id, user_email=user_email)
+        except Account.DoesNotExist:
+            user_obj = None
+
+        if user_obj is None:
+            content = {'message': '해당 계정이 존재하지 않습니다.'}
+            return Response(content, template_name='myauth/findpw_fail.html')
+
+        current_site = get_current_site(request)
+        domain = current_site.domain
+        uidb64 = urlsafe_base64_encode(force_bytes(user_obj.pk))
+        #token = jwt.encode({'user': user_obj.user_id}, settings.SECRET_KEY, algorithm='HS256').decode('utf-8')
+        message_data = text.find_message(domain, uidb64)
+
+        mail_title = "비밀번호 변경 메일입니다."
+        mail_to = user_obj.user_email
+        email = EmailMessage(mail_title, message_data, to=[mail_to])
+        email.send()
+        return Response(template_name='myauth/login.html')
+
+
+    def get(self, request, *args, **kwargs):
+        return Response(template_name='myauth/find_password.html')
+
+
+
+# 비밀번호 변경
+class ChangePasswordView(APIView):
+    permission_classes = [permissions.AllowAny]
+    renderer_classes = (JSONRenderer, TemplateHTMLRenderer,)
+    def post(self, request, uidb64):
+        password = request.data.get('password')
+        check_password = request.data.get('check_password')
+        if password == check_password:
+            user = Account.objects.get(user_id=uidb64)
+            user.user_pw = (bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())).decode()
+            user.save()
+            return Response({
+                'response': 'success',
+                'message': '비밀번호가 변경되었습니다.'
+            })
+        else:
+            return Response({
+                'response': 'error',
+                'message': '입력한 비밀번호가 다릅니다.'
+            })
+    
+    def get(self, request, *args, uidb64):
+        try:
+            uid = force_text(urlsafe_base64_decode(uidb64))
+            user = Account.objects.get(pk=uid)
+            if user.user_id:
+                context = {'uuid': user.user_id}
+                return Response(context, template_name='myauth/change_password.html')
+
+            return JsonResponse({'message': 'auth fail'}, status=400)
+        except ValidationError:
+            return JsonResponse({'message': 'type_error'}, status=400)
+        except KeyError:
+            return JsonResponse({'message': 'INVALID_KEY'}, status=400)
+
 
 
 
@@ -155,6 +229,7 @@ class Activate(View):
             return JsonResponse({'message': 'type_error'}, status=400)
         except KeyError:
             return JsonResponse({'message': 'INVALID_KEY'}, status=400)
+
 
 
 
